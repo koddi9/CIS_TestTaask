@@ -32,7 +32,7 @@ public class MainTests {
         Price price8 = new Price(8, "122856", 2, 1, getJanuary2013(17), getJanuary2013(27), 13_000);
         Price price9 = new Price(9, "122856", 2, 1, getJanuary2013(17), getJanuary2013(24), 92_000);
 
-        Price price10 = new Price(10, "122856", 2, 1, getDateOf2013(Month.MARCH,1), getDateOf2013(Month.MARCH,7), 99_000);
+        Price price10 = new Price(10, "122856", 2, 1, getDateOf2013(Month.MARCH, 1), getDateOf2013(Month.MARCH, 7), 99_000);
         prices = Map.of(
                 price1.getId(), price1,
                 price2.getId(), price2,
@@ -48,7 +48,7 @@ public class MainTests {
     }
 
     @Test
-    public void defaultTests() {
+    public void defaultTest() {
         oldPrices = Arrays.asList(prices.get(1), prices.get(2), prices.get(3));
         newPrices = Arrays.asList(prices.get(4), prices.get(5), prices.get(6));
 
@@ -68,7 +68,7 @@ public class MainTests {
     }
 
     @Test
-    public void given1() {
+    public void testCaseWithInternalNewPrice() {
         oldPrices = Arrays.asList(prices.get(1), prices.get(2));
         newPrices = Arrays.asList(prices.get(5), prices.get(6), prices.get(7));
 
@@ -87,7 +87,7 @@ public class MainTests {
     }
 
     @Test
-    public void given2() {
+    public void testCaseWithExternalNewPrice() {
         oldPrices = Arrays.asList(prices.get(1), prices.get(2));
         newPrices = Arrays.asList(prices.get(5), prices.get(6), prices.get(7), prices.get(8));
 
@@ -106,7 +106,7 @@ public class MainTests {
     }
 
     @Test
-    public void given3() {
+    public void testCaseWithInternalNewPriceAndSameValue() {
         oldPrices = Arrays.asList(prices.get(1), prices.get(2));
         newPrices = Arrays.asList(prices.get(5), prices.get(6), prices.get(7), prices.get(9));
 
@@ -125,14 +125,14 @@ public class MainTests {
     }
 
     @Test
-    public void given4() {
+    public void testCaseWithSeparatedNewPrice() {
         oldPrices = Arrays.asList(prices.get(1), prices.get(2));
         newPrices = Arrays.asList(prices.get(5), prices.get(6), prices.get(10));
 
         Price price1 = new Price(1, "122856", 1, 1, getJanuary2013(1), getDateOf2013(Month.FEBRUARY, 20), 11_000);
         Price price2 = new Price(2, "122856", 2, 1, getJanuary2013(10), getJanuary2013(15), 99_000);
         Price price3 = new Price(3, "122856", 2, 1, getJanuary2013(15), getJanuary2013(25), 92_000);
-        Price price4 = new Price(4, "122856", 2, 1, getDateOf2013(Month.MARCH,1), getDateOf2013(Month.MARCH,7), 99_000);
+        Price price4 = new Price(4, "122856", 2, 1, getDateOf2013(Month.MARCH, 1), getDateOf2013(Month.MARCH, 7), 99_000);
 
         List<Price> expectedResult = Arrays.asList(price1, price2, price3, price4);
         printList(expectedResult, "Expected result: ");
