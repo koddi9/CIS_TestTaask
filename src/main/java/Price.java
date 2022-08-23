@@ -1,11 +1,10 @@
 
-import java.util.Date;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.StringJoiner;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
 
 public class Price {
-    private long id;
+    private int id;
     private String product_code;
     private int number;
     private int depart;
@@ -17,7 +16,7 @@ public class Price {
 
     }
 
-    public Price(long id, String product_code, int number, int depart, Date begin, Date end, long value) {
+    public Price(int id, String product_code, int number, int depart, Date begin, Date end, long value) {
         this.id = id;
         this.product_code = product_code;
         this.number = number;
@@ -37,11 +36,11 @@ public class Price {
         this.value = price.getValue();
     }
 
-    public long getId() {
+    public int getId() {
         return id;
     }
 
-    public Price setId(long id) {
+    public Price setId(int id) {
         this.id = id;
         return this;
     }
@@ -122,8 +121,8 @@ public class Price {
                 .add("product_code='" + product_code + "'")
                 .add("number=" + number)
                 .add("depart=" + depart)
-                .add("begin=" + Optional.ofNullable(begin).map(Date::toInstant))
-                .add("end=" + Optional.ofNullable(end).map(Date::toInstant))
+                .add("begin=" + LocalDate.ofInstant(begin.toInstant(), ZoneId.systemDefault()))
+                .add("end=" + LocalDate.ofInstant(end.toInstant(), ZoneId.systemDefault()))
                 .add("value=" + value);
         return message.toString();
     }

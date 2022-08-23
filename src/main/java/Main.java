@@ -1,179 +1,139 @@
 
 import java.io.IOException;
-import java.time.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
 public class Main {
 
-    private static Date getJanuary2013(int day, boolean isEndOfDay) {
-        LocalDate date = LocalDate.of(2013, Month.JANUARY, day);
-        LocalDateTime dateTime = isEndOfDay ? date.atTime(LocalTime.MAX) : date.atStartOfDay();
-        return Date.from(dateTime.toInstant(ZoneOffset.UTC));
-    }
-
-    private static Date getDateOf2013(Month month, int day) {
-        LocalDate date = LocalDate.of(2013, month, day);
-        return Date.from(date.atTime(LocalTime.MAX).toInstant(ZoneOffset.UTC));
-    }
-
     public static void main(String[] args) throws IOException {
-        Price price1 = new Price(1, "122856", 1, 1, getJanuary2013(1, false), getJanuary2013(31, true), 11_000);
-        Price price2 = new Price(3, "122856", 2, 1, getJanuary2013(10, false), getJanuary2013(20, true), 99_000);
-        Price price3 = new Price(5, "6654", 1, 2, getJanuary2013(1, false), getJanuary2013(31, false), 5_000);
-        List<Price> oldPrices = Arrays.asList(price1, price2, price3);
-
-        Price price6 = new Price(2, "6654", 1, 2, getJanuary2013(12, false), getJanuary2013(13, false), 4_000);
-        Price price5 = new Price(4, "122856", 2, 1, getJanuary2013(15, false), getJanuary2013(25, true), 92_000);
-        Price price7 = new Price(7, "122856", 2, 1, getJanuary2013(16, false), getJanuary2013(20, false), 12_000);
-        Price price4 = new Price(6, "122856", 1, 1, getJanuary2013(20, false), getDateOf2013(Month.FEBRUARY, 20), 11_000);
-        List<Price> newPrices = Arrays.asList(price4, price5, price6,price7);
-
-//        for(Price price:getUpdatedPrices(oldPrices, newPrices)){
-//            System.out.println(price);
-//        }
-        System.out.println();
-        for(Price price:getUpdatedPrices2(oldPrices, newPrices)){
-            System.out.println(price);
-        }
+//      Тесты для запуска в директории ./src/test/java/MainTests
     }
 
-
-    public static List<Price> getUpdatedPrices2(List<Price> previousPrices, List<Price> newPrices) {
+    public static List<Price> getUpdatedPrices(List<Price> previousPrices, List<Price> newPrices) {
         List<Price> result = Stream.concat(previousPrices.stream(), newPrices.stream())
                 .sorted(Comparator.comparing(Price::getProduct_code).thenComparing(Price::getDepart).thenComparing(Price::getNumber).thenComparing(Price::getBegin))
                 .collect(Collectors.toList());
-//        System.out.println(result);
 
-        Map<Price, List<Price>> prices = new HashMap<>();
-        Price currentPrice = result.get(0);
+        List<Price> updatedList = new ArrayList<>();
+        Price currentPriceType = result.get(0);
         List<Price> priceList = new ArrayList<>(List.of(result.get(0)));
-        prices.put(currentPrice, priceList);
         for (int i = 1; i < result.size(); i++) {
             Price nextPrice = result.get(i);
-            if (currentPrice.equals(nextPrice)) {
-                mergePrices2(prices.get(currentPrice), nextPrice);
-
+            if (currentPriceType.equals(nextPrice)) {
+                mergePrices(priceList, nextPrice);
             } else {
+                updatedList.addAll(priceList);
                 priceList = new ArrayList<>(List.of(nextPrice));
-                prices.put(nextPrice, priceList);
-                currentPrice = nextPrice;
+                currentPriceType = nextPrice;
+            }
+            if (i == result.size() - 1) {
+                updatedList.addAll(priceList);
             }
         }
-        return prices.values().stream().flatMap(Collection::stream).collect(Collectors.toList());
+        return updatedList;
     }
 
-    private static List<Price> mergePrices2(List<Price> prices, Price mergedPrice) {
-        Price price = prices.get(prices.size() - 1);
-//        for(int i=prices.size() - 1;i>=0;i--){
-//            if(prices.get(i).getBegin().before(mergedPrice.getBegin())){
-//                price = prices.get(i);
-//            }
-//        }
-
-//        for (int i = prices.size() - 1; i >= 0; i--) {
-//            Price price = prices.get(i);
-            if (isEnclosed(price, mergedPrice)) {
-                if(price.getValue()==mergedPrice.getValue()){
-                    return prices;
-                } else {
-                    Price newPrice = new Price(price);
-                    newPrice.setBegin(mergedPrice.getEnd());
-                    newPrice.setEnd(price.getEnd());
-                    prices.add(newPrice);
-                    price.setEnd(mergedPrice.getBegin());
-                    prices.add(mergedPrice);
-                }
-            } else if (isConnected(price, mergedPrice)) {
-                if(price.getValue()==mergedPrice.getValue()){
-                    price.setEnd(mergedPrice.getEnd());
-                } else {
-                    price.setEnd(mergedPrice.getBegin());
-                    prices.add(mergedPrice);
-                }
-//            }
+    /**
+     * Выполняет слияние имеющихся цен с новой ценой.
+     *
+     * @param prices      список отсортированных имеющихся цен
+     * @param mergedPrice новая цена
+     * @return возвращает обновленный список цен с одинаковыми product_code, depart и number.
+     */
+    private static List<Price> mergePrices(List<Price> prices, Price mergedPrice) {
+        //externalPrice - цена в списке имеющихся цен, во временном диапазоне которой располагается (как минимум) начало действия новой цены
+        //Пример: в отрезках времени [10..15][15..25][25..30], для новой цены с beginDate=18, external price соответствует цене с временным диапазоном [15..25]
+        Price externalPrice = null;
+        int index = prices.size() - 1;
+        for (int i = prices.size() - 1; i >= 0; i--) {
+            Price p = prices.get(i);
+            if (p.getBegin().before(mergedPrice.getBegin()) && p.getEnd().after(mergedPrice.getBegin())) {
+                externalPrice = p;
+                index = i;
+                break;
+            }
+        }
+        if (externalPrice == null) {
+            prices.add(mergedPrice);
+            return prices;
         }
 
-        return null;
-    }
-
-    private static boolean isEnclosed(Price price1, Price price2) {
-        if (price2.getBegin().after(price1.getBegin()) && price1.getEnd().after(price2.getEnd())) {
-            return true;
-        }
-        return false;
-    }
-
-    private static boolean isConnected(Price price1, Price price2) {
-        if (price1.getEnd().after(price2.getBegin())) {
-            return true;
-        }
-        return false;
-    }
-
-
-
-
-
-    public static List<Price> getUpdatedPrices(List<Price> previousPrices, List<Price> newPrices) {
-        Map<Price, List<Price>> result = Stream.concat(previousPrices.stream(), newPrices.stream())
-                .collect((Collectors.toMap(p -> p, Arrays::asList, Main::mergePrices)));
-
-        return result.values().stream().flatMap(Collection::stream).collect(Collectors.toList());
-    }
-
-    private static List<Price> mergePrices(List<Price> priceList1, List<Price> priceList2) {
-        Price price1 = priceList1.get(0);
-        Price price2 = priceList2.get(0);
-
-        Date beginPrice1 = price1.getBegin();
-        Date endPrice1 = price1.getEnd();
-        Date beginPrice2 = price2.getBegin();
-        Date endPrice2 = price2.getEnd();
-
-        if (isDatesOverlaps(beginPrice1, endPrice1, beginPrice2, endPrice2)) {
-            if (price1.getValue() == price2.getValue()) {
-                price1.setBegin(beginPrice1.before(beginPrice2) ? beginPrice1 : beginPrice2);
-                price1.setEnd(endPrice1.after(endPrice2) ? endPrice1 : endPrice2);
-                return Collections.singletonList(price1);
+        if (isEnclosed(externalPrice, mergedPrice)) {
+            if (!arePricesEqualByValue(externalPrice, mergedPrice)) {
+//                dividedPrice - цена, которая образуется при разделении имеющегося отрезка времени на три части. Описывает цену в "хвостовой" части.
+//                Пример: Если в [15..25] вставить [18..20], то dividedPrice будет соответствовать отрезок времени [20..25]
+                Price dividedPrice = new Price(externalPrice);
+                dividedPrice.setBegin(mergedPrice.getEnd());
+                dividedPrice.setEnd(externalPrice.getEnd());
+                externalPrice.setEnd(mergedPrice.getBegin());
+                prices.add(mergedPrice);
+                prices.add(dividedPrice);
+            }
+        } else if (isConnected(externalPrice, mergedPrice)) {
+            if (arePricesEqualByValue(externalPrice, mergedPrice)) {
+                externalPrice.setEnd(mergedPrice.getEnd());
             } else {
-                if (beginPrice1.before(beginPrice2)) {
-                    return intersectPrices(price1, price2);
-                } else {
-                    return intersectPrices(price2, price1);
+                externalPrice.setEnd(mergedPrice.getBegin());
+                prices.add(++index, mergedPrice);
+            }
+
+            for (int i = index + 1; i < prices.size(); i++) {
+//                modifiablePrice - цена из списка имеющихся цен, которая полностью/частично располагается на временном участке новой цены
+//                Пример: Если в имеющиеся цены с промежутками [10..15][15..22][22..30] вставить новую цену с промежутком [12..25],
+//                то modifiablePrice будут соответствовать отрезки времени [15..22] и [22..30]
+                Price modifiablePrice = prices.get(i);
+                if (mergedPrice.getEnd().after(modifiablePrice.getEnd())) {
+                    prices.remove(i);
+                } else if (mergedPrice.getEnd().after(modifiablePrice.getBegin())) {
+                    if (arePricesEqualByValue(modifiablePrice, mergedPrice)) {
+                        mergedPrice.setEnd(modifiablePrice.getEnd());
+                        prices.remove(i);
+                    } else {
+                        modifiablePrice.setBegin(mergedPrice.getEnd());
+                    }
                 }
             }
-        } else {
-            return Arrays.asList(price1, price2);
         }
+        return prices;
     }
 
-    private static boolean isDatesOverlaps(Date beginPrice1, Date endPrice1, Date beginPrice2, Date endPrice2) {
-        return beginPrice1.before(endPrice2) && endPrice1.after(beginPrice2);
+    /**
+     * Возвращает true, если временные границы price2 не выходят за пределы временного диапазона price1.
+     * Примеры:
+     * [3..6] включает [4..5]
+     * [3..6] включает [3..6]
+     * [3..6] не включает [4..7]
+     * [3..6] не включает [7..10]
+     *
+     * @param price1
+     * @param price2
+     */
+    private static boolean isEnclosed(Price price1, Price price2) {
+        if (price1 == null || price2 == null) return false;
+        return price2.getBegin().after(price1.getBegin()) && price1.getEnd().after(price2.getEnd());
     }
 
-    private static List<Price> intersectPrices(Price price1, Price price2) {
-        Date beginPrice2 = price2.getBegin();
-        Date endPrice1 = price1.getEnd();
-        Date endPrice2 = price2.getEnd();
-
-        if (endPrice2.before(endPrice1)) {
-            Price price3 = new Price()
-                    .setProduct_code(price1.getProduct_code())
-                    .setNumber(price1.getNumber())
-                    .setDepart(price1.getDepart())
-                    .setBegin(endPrice2)
-                    .setEnd(endPrice1)
-                    .setValue(price1.getValue());
-
-            price1.setEnd(beginPrice2);
-            return Arrays.asList(price1, price2, price3);
-        } else {
-            price1.setEnd(beginPrice2);
-            return Arrays.asList(price1, price2);
-        }
+    /**
+     * Возвращает true, если начало временного диапазона price2 заключено в пределах временного диапазона price1.
+     * Примеры:
+     * [2, 4] и [5, 7] не связаны
+     * [2, 4] и [3, 5] связаны, потому что оба заключают [3, 4]
+     * [2, 4] и [4, 6] связаны, потому что оба заключают пустой диапазон [4, 4]
+     *
+     * @param price1
+     * @param price2
+     */
+    private static boolean isConnected(Price price1, Price price2) {
+        if (price1 == null || price2 == null) return false;
+        return price1.getEnd().after(price2.getBegin());
     }
 
+    private static boolean arePricesEqualByValue(Price price1, Price price2) {
+        if (price1 == null || price2 == null) return false;
+        return price1.getValue() == price2.getValue();
+    }
 }
